@@ -62,15 +62,18 @@ pip install -r requirements.txt
 Our main experiment's code is under the `cub` folder, referring to the Caltech-UCSD Birds dataset.
 The training code of S0 model (base model) is adapted from [repo](https://github.com/salaniz/pytorch-gve-lrcn). 
 
-We have complete evaluation pipeline and interactive jupyter notebook (to be released soon).
+You can run an interactive version of our code in `interactive.ipynb`, where you can specify an issue and generate the caption.
+
+The complete evaluation pipeline will be released soon.
 
 ## MSCOCO Dataset
 
-We have implemented our pragmatic decoder on a very popular state-of-the-art image captioning [repo](https://github.com/ruotianluo/self-critical.pytorch). Even though we do not have
+We have implemented our pragmatic decoder on a very popular state-of-the-art image captioning [repo](https://github.com/ruotianluo/self-critical.pytorch). 
+Even though we do not have
 quantitative experiment, we made the code and notebook available so that our Pragmatic caption decoder can be used by other
 researchers.
 
-This will be made available very shortly (if you need the code now, please email).
+This version of code integrated incremental RSA decoding with the beam search. We are happy to share our RSA beam search decoder in this repo (available soon).
 
 ## RSA Re-ranking Visualization
 
@@ -80,8 +83,54 @@ that help us debug our implementation and visualize the Bayesian re-ranking proc
 The RSA computation can be thought of as a series of probabilistic re-weighting of each word's generation probability.
 We care about the relative rank of each word compared to other words in the vocabulary.
 
-We built a tool to visualize how each computation in our model is affecting the relative ranking of words. 
+We built a tool to visualize how each step of computation in our model is affecting the relative ranking of words.
+In this example, we are visualizing a list of words `['eye', 'superciliary',
+  'stripe',
+  'yellow-silver',
+  'stripes',
+  'streak',
+  'beack']` at position 11 of our generated caption. We can see that although at first, "superciliary" is ranked higher than the rest,
+  eventually after re-weighting, the probability distribution of S1 has "streak" ranked higher. 
+  
+```python
+from rsa import IncRSADebugger
+debugger = IncRSADebugger(model, rsa_dataset)
 
+debugger.visualize_words_decision_paths_at_timestep(11, ['eye',
+  'superciliary',
+  'stripe',
+  'yellow-silver',
+  'stripes',
+  'streak',
+  'beack'])
+```
+
+![word_comparison_ranking2](https://github.com/windweller/Pragmatic-ISIC/raw/master/misc/word_comparison_ranking2.png)
+
+We can also visualize the ranking of one word over many positions of the generated caption. This allows you to see how the probability
+of generating a single word increases or decreases along the generation process at each time step.
+
+```python
+debugger.visualize_word_decision_path_at_timesteps("eye")
+```
+
+![word_across_time](https://github.com/windweller/Pragmatic-ISIC/raw/master/misc/word_across_time.png)
+
+At last, this debugger will check the if the implementation of model is correct or not:
+
+```python
+debugger.run_full_checks()
+```
+```
+S0 - The following value should be 1: tensor(1.0000, device='cuda:0')
+L1 - The following value should be 1: tensor(1., device='cuda:0')
+U1 - The following value should be less than 1: tensor(0.6973, device='cuda:0')
+L1 QuD - The following value should be 1: tensor(1., device='cuda:0')
+U2 - The following two values should equal 3.1263315677642822 == 3.126331329345703
+S0 - The following value should be 1: tensor(1., device='cuda:0')
+```
+
+We are cleaning up the codebase of debugger, and it will be added to this repo very soon.
 
 ## FAQ
 
