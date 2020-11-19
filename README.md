@@ -57,16 +57,16 @@ sh rsa-file-setup.sh
 pip install -r requirements.txt
 ```
 
-## CUB
+## CUB Dataset
 
 Our main experiment's code is under the `cub` folder, referring to the Caltech-UCSD Birds dataset.
 The training code of S0 model (base model) is adapted from [repo](https://github.com/salaniz/pytorch-gve-lrcn). 
 
 We have complete evaluation pipeline and interactive jupyter notebook (to be released soon).
 
-## MSCOCO
+## MSCOCO Dataset
 
-We have implemented our pragmatic decoder on a very popular state-of-the-art image captioning repo. Even though we do not have
+We have implemented our pragmatic decoder on a very popular state-of-the-art image captioning [repo](https://github.com/ruotianluo/self-critical.pytorch). Even though we do not have
 quantitative experiment, we made the code and notebook available so that our Pragmatic caption decoder can be used by other
 researchers.
 
@@ -80,7 +80,8 @@ that help us debug our implementation and visualize the Bayesian re-ranking proc
 The RSA computation can be thought of as a series of probabilistic re-weighting of each word's generation probability.
 We care about the relative rank of each word compared to other words in the vocabulary.
 
- 
+We built a tool to visualize how each computation in our model is affecting the relative ranking of words. 
+
 
 ## FAQ
 
