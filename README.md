@@ -14,8 +14,12 @@ We define issue broadly, as any concept that can generate a partition of images.
 For example, in the Caltech-UCSD Birds dataset, issue is defined as a body part of the bird, because difference in body part can 
 give rise to the partition (birds with similar body parts, and birds without similar body parts).
 
+![Bird Caption](https://github.com/windweller/Pragmatic-ISIC/raw/master/misc/isic_fig2.png)
+
 In the MSCOCO dataset, we define issue as a VQA question, because the answer to the VQA question `"Red" = VQA(Image, "What is the color of the wall?"`
 can produce a partition of images (images with red walls and images without red walls).
+
+![MSCOCO](https://github.com/windweller/Pragmatic-ISIC/raw/master/misc/isic_fig1.png)
 
 We extend a popular probabilistic model (Rational Speech Act) that is widely used to model various
 linguistic pragmatic behaviors (vagueness, generics, presupposition, question under discussion).
