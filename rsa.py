@@ -43,7 +43,6 @@ class BirdDistractorDataset(object):
         :param return_labels:
         :param randomized: randomized means that we get a shuffled-once random attribute matrix. It's still deterministic.
         """
-
         self.cell_select_strategy = cell_select_strategy
 
         self.args = args = get_args(argstring)
@@ -299,10 +298,6 @@ class BirdDistractorDataset(object):
         return class_label
 
     def get_batch(self, list_img_ids):
-        # this needs to be called seperately for
-        # this batches together distractor, similar, and target image
-        # needs to be similar to collate_fn()
-
         # list_img_ids: file names
         images = []
         labels = []
@@ -327,11 +322,9 @@ class BirdDistractorDataset(object):
         split = self.image_id_to_split[img_id]
         dataset = self.split_to_data[split]
 
-        # base_id = dataset.ids[index]
         base_id = img_id
 
         img_anns = dataset.coco.imgToAnns[img_id]
-        # rand_idx = np.random.randint(len(img_anns))
         ann_ids = [img_anns[rand_idx]['id'] for rand_idx in range(len(img_anns))]
 
         tokens = [dataset.tokens[ann_id] for ann_id in ann_ids]
@@ -404,7 +397,6 @@ class BirdDistractorDataset(object):
             captions = self.get_caption_by_img_id(img_id, True)
             img_name_to_caption[img_id] = captions
 
-        # we print it out
         if print_ready:
             for img_id, captions in img_name_to_caption.items():
                 print('img name: {}'.format(img_id))
@@ -442,27 +434,6 @@ def load_model(rsa_dataset, verbose=True):
 class RSA(object):
     """
     RSA through matrix normalization
-    Given a literal matrix of log-prob
-        c1  c2  c3
-    i   -5  -6  -20
-    i'  -5  -9  -20
-    i'' -10 -11 -20
-
-    RSA has three cases:
-    Case 1: If a sequence (C) has high prob for i, but high also in i', i'', the prob is relatively down-weighted
-    Case 2: If a sequence (C) has low prob for i, but low also in i', i'', the prob is then relatively up-weighted (higher than original)
-    Case 3: If a seuqnce (C) has high prob for i, but low for i', i'', the prob is relatively up-weighted
-    (But this is hard to say due to the final row normalization)
-
-    use logsumexp() to compute normalization constant
-
-    Normalization/division in log-space is just a substraction
-
-    Column normalization means: -5 - logsumexp([-5, -5, -10])
-    (Add together a column)
-
-    Row normalization means: -5 - logsumexp([-5, -6, -7])
-    (Add together a row)
 
     We can compute RSA through the following steps:
     Step 1: add image prior: + log P(i) to the row
@@ -498,7 +469,6 @@ class RSA(object):
         Do the normalization over logprob matrix
 
         literal_matrix: [num_distractor_images+1, captions]
-        So row normalization correspond to
 
         :param literal_matrix: should be [I, C]  (num_images, num_captions)
                                Or [I, Vocab] (num_images, vocab_size)
@@ -539,42 +509,24 @@ class RSA(object):
     def compute_pragmatic_speaker_w_similarity(self, literal_matrix, num_similar_images,
                                                rationality=1.0, speaker_prior=False, lm_logprobsf=None,
                                                entropy_penalty_alpha=0.0, return_diagnostics=False):
-        # step 1
-        pass
-        # step 2
+
         s0_mat = literal_matrix
         prior = s0_mat.clone()[0]
 
         l1_mat = s0_mat - logsumexp(s0_mat, dim=0, keepdim=True)
 
-        # step 3
-        # pragmatic_listener_matrix *= rationality
-        # step 5: QuD-RSA S1
-        # 0). Compute entropy H[P(v|i, q(i)=q(i'))]; normalize "vertically" on
-
         same_cell_prob_mat = l1_mat[:num_similar_images + 1] - logsumexp(l1_mat[:num_similar_images + 1], dim=0)
         l1_qud_mat = same_cell_prob_mat.clone()
-        #         same_cell_norm
+
         entropy = self.compute_entropy(same_cell_prob_mat, 0, keepdim=True)  # (1, |V|)
 
-        # this means when alpha=0.2, it's more similar to what we have before: -1/H
         utility_2 = entropy
 
-        # then we need to normalize this to [0, 1] and then take log!
-        # so that entropy and prob will be in the same space
-
-        # 1). Sum over similar images with target image (vertically)
-        # [target_image, [similar_images], [distractor_images]]
         utility_1 = logsumexp(l1_mat[:num_similar_images + 1], dim=0, keepdim=True)  # [1, |V|]
-        # This tradeoff may or may not be the best way...we are adding log-probability with entropy
 
-        # now we do 1/H(x), this is more similar to "cost"
-        # and we do L1(u) - C(u) style!
         utility = (1 - entropy_penalty_alpha) * utility_1 + entropy_penalty_alpha * utility_2
 
         s1 = utility * rationality
-
-        # set_trace()
 
         # apply rationality
         if speaker_prior:
@@ -742,11 +694,10 @@ class IncRSA(RSA):
             # all our RSA computation is in log-prob space
             log_probs = F.log_softmax(outputs, dim=-1)  # log(softmax(x))
 
-            # rsa!!
+            # rsa
             literal_matrix = log_probs
 
-            # diagnostics!!
-
+            # diagnostics
             if not return_diagnostic:
                 pragmatic_array = self.compute_pragmatic_speaker_w_similarity(literal_matrix, num_sim,
                                                                               rationality=rationality,
@@ -1204,19 +1155,6 @@ class IncRSADebugger(IncRSA):
 
 if __name__ == '__main__':
     rsa_dataset = BirdDistractorDataset()
-    # dataset, data_loader = rsa_dataset.split_to_data['train']
-    # dataset[3]
-    # image, target, base_id =
-    # (tensor([ 0.0202, -0.0080, -0.0014,  ...,  0.0296, -0.0029, -0.0227]), tensor([ 1., 31.,  7., 27.,  4., 77., 28., 29., 60., 38., 74., 12.,  4.,  5.,
-    #         68.,  2.]), '195.Carolina_Wren/Carolina_Wren_0029_186212.jpg')
-    # dataset.return_label
-    # 10946
-
-    # save a randomized attribute map
-    _, _, att_map, random_idx_to_file_idx = rsa_dataset.load_attribute_map_randomized()
-    # import pdb; pdb.set_trace()
-    pickle.dump(random_idx_to_file_idx, open("./data/cub/attributes/random_idx_to_file_idx.json", 'wb'))
-    np.save("./data/cub/attributes/randomized_attribute_matrix.npy", att_map)
 
     # rsa_dataset.get_valid_qs("195.Carolina_Wren/Carolina_Wren_0029_186212.jpg")
     # rsa_dataset.get_cells_by_partition("195.Carolina_Wren/Carolina_Wren_0029_186212.jpg", 117, 5)

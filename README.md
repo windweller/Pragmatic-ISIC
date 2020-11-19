@@ -134,8 +134,6 @@ U2 - The following two values should equal 3.1263315677642822 == 3.1263313293457
 S0 - The following value should be 1: tensor(1., device='cuda:0')
 ```
 
-We are cleaning up the codebase of debugger, and it will be added to this repo very soon.
-
 ## FAQ
 
 The PyTorch version used in this code is not the latest version. In fact, if you use the latest version,
